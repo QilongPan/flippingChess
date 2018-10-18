@@ -16,8 +16,6 @@ class Board(object):
         # key: move as location on the board,
         # value: player as pieces type
         self.states = {}
-        # need how many pieces in a row to win
-        self.n_in_row = int(kwargs.get('n_in_row', 5))
         self.players = [1, 2]  # player1 and player2
 
     def init_board(self, start_player=0):
@@ -25,7 +23,8 @@ class Board(object):
         # keep available moves in a list
         #产生[0,self.width*self.height)之间的所有数存于列表中
         #availables为棋盘上可以落子的位置
-        self.availables = list(range(self.width * self.height))
+    #   self.availables = list(range(self.width * self.height))
+        self.can_flip_positions = list(range(self.width * self.height))
         #下棋位置dict #states = {32:1,22:2,34:1} key表示location,value表示
         self.states = {}
         #最后一颗棋

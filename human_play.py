@@ -49,12 +49,10 @@ class Human(object):
 
 
 def run():
-    n = 5
     width, height = 4, 4
-#    model_file = 'best_policy_8_8_5.model'
-#    model_file = './best_policy.model'
+    model_file = './best_policy.model'
     try:
-        board = Board(width=width, height=height, n_in_row=n)
+        board = Board(width=width, height=height)
         game = Game(board)
 
         # ############### human VS AI ###################
