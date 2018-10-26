@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-25 11:36:34
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-25 11:37:30
+# @Last Modified time: 2018-10-26 14:43:18
 
 import numpy as np
 import tensorflow as tf
@@ -11,7 +11,7 @@ class PolicyValueNet():
     def __init__(self, board_width, board_height, model_file=None):
         self.board_width = board_width
         self.board_height = board_height
-
+        self.action_numbers = 96
         # Define the tensorflow neural network
         # 1. Input: 第一个参数为样本数量，第二个参数为通道数，第三个参数为棋盘高，第四个参数为棋盘宽
         self.input_states = tf.placeholder(
@@ -43,7 +43,7 @@ class PolicyValueNet():
         # 3-2 Full connected layer, the output is the log probability of moves
         # on each slot on the board
         self.action_fc = tf.layers.dense(inputs=self.action_conv_flat,
-                                         units=board_height * board_width,
+                                         units=self.action_numbers,
                                          activation=tf.nn.log_softmax)
         # 4 Evaluation Networks
         self.evaluation_conv = tf.layers.conv2d(inputs=self.conv3, filters=2,
@@ -69,7 +69,7 @@ class PolicyValueNet():
                                                        self.evaluation_fc2)
         # 3-2. Policy Loss function
         self.mcts_probs = tf.placeholder(
-                tf.float32, shape=[None, board_height * board_width])
+                tf.float32, shape=[None, self.action_numbers])
         self.policy_loss = tf.negative(tf.reduce_mean(
                 tf.reduce_sum(tf.multiply(self.mcts_probs, self.action_fc), 1)))
         # 3-3. L2 penalty (regularization)
@@ -119,6 +119,7 @@ class PolicyValueNet():
         output: a list of (action, probability) tuples for each available
         action and the score of the board state
         """
+        
         legal_positions = board.availables
         current_state = np.ascontiguousarray(board.current_state().reshape(
                 -1, 4, self.board_width, self.board_height))

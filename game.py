@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-24 15:27:55
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-25 17:03:42
+# @Last Modified time: 2018-10-26 19:08:23
 from __future__ import print_function
 import random
 import numpy as np
@@ -35,7 +35,7 @@ class Cross(object):
 
 class Chess(object):
 	'''
-	type:司长，军长，师长，旅长，团长,营长，连长，炸弹分别采用0,1,2,3,4,5,6,7表示
+	type:司令，军长，师长，旅长，团长,营长，连长，炸弹分别采用0,1,2,3,4,5,6,7表示
 	'''
 	def __init__(self,chess_type = None,seat = None,color = None,show = 0,index = 0):
 		self.chess_type = chess_type
@@ -64,8 +64,13 @@ class Chess(object):
 	0表示同归于尽
 	1表示战胜
 	2表示战败
+	-1表示不能攻击
 	'''
 	def get_fight_result(self,attacked_chess):
+		if attacked_chess == None:
+			return -1
+		if self.seat == attacked_chess.seat:
+			return -1
 		if attacked_chess.chess_type == 7 or self.chess_type == 7:
 			return 0
 		elif self.chess_type == attacked_chess.chess_type:
@@ -178,6 +183,12 @@ class Board(object):
 				self.cross_list[i].chess = self.all_chess[current_index]
 				current_index = current_index + 1
 		self.cross_list[29].chess = None
+		self.moves = self.get_moves(self.current_player)
+		self.availables = self.get_availables(self.moves)
+		print("moves:")
+		print(self.moves)
+		print("availables:")
+		print(self.availables)
 
 	def random_layout(self):
 		for i in range(len(self.all_chess) - 1,-1,-1):
@@ -209,7 +220,7 @@ class Board(object):
 	def get_current_player(self):
 		return self.current_player
 
-	def do_action(self,action):
+	def do_move(self,action):
 
 		self.last_action = action
 		print("last action:")
@@ -225,6 +236,12 @@ class Board(object):
 			self.current_player = self.players[0]
 		else:
 			self.current_player = self.players[1]
+		self.moves = self.get_moves(self.current_player)
+		self.availables = self.get_availables(self.moves)
+		print("moves:")
+		print(self.moves)
+		print("availables:")
+		print(self.availables)
 		print("no eat chess times:",self.no_eat_chess_times)
 		print("action times:",self.action_times)
 
@@ -257,11 +274,14 @@ class Board(object):
 		elif self.players_chess_number[1] < 3:
 			return True,0
 		return False,-1
+
+
 		'''
 		当没有棋子时，则判输
 		当30步没吃子时，强制和棋
 		当总步数超过250步时，强制和棋
 		'''
+
 	def game_end(self):
 		win,winner = self.has_a_winner()
 		if win:
@@ -315,10 +335,211 @@ class Board(object):
 			square_state[3][:,:] = 1.0
         #将棋盘最后一行放到第一行，倒数第二行放在第二行，依次类推
 		return square_state[:,::-1,:]
+	'''
+	行为表示为xyab xy表示移动前位置，ab表示移动后位置 x与a为0时可省略
+	'''
+	def code_action(self,action):
+		return action[0]*100 + action[1]
+
+	#move表示为xyab xy表示移动前位置，ab表示移动后位置 x与a为0时可省略
+	def get_action_by_move(self,move):
+		action = []
+		start_location = move // 100
+		start_location_x = start_location // 10
+		start_location_y = start_location % 10
+		action.append(start_location_x * self.width + start_location_y)
+		end_location = move % 100
+		end_location_x = end_location // 10
+		end_location_y = end_location % 10
+		action.append(end_location_x * self.width + end_location_y)
+		return action
+
+	def get_move_by_index(self,start_index,end_index):
+		start_x = start_index // self.width
+		start_y = start_index % self.width
+		end_x = end_index // self.width
+		end_y = end_index % self.width
+		start_move = start_x * 10 + start_y
+		end_move = end_x * 10 + end_y
+		move = start_move * 100 + end_move
+		return move
 
 
+	def same_chess_count(self,chess_type,pos,seat):
+		pos_x = pos // 10
+		pos_y = pos % 10
+		location = pos_x * self.width + pos_y
+		count = 1
+		for i in range(location):
+			chess = self.cross_list[i].chess
+			if chess != None:
+				if chess.chess_type == chess_type and chess.seat == seat:
+					count = count + 1
+		return count
 
+	#width = 5 height = 6
+	def decode_action(self,code_action):
+		start = code_action // 100
+		start_location_x = start // 10
+		start_location_y = start % 10
+		start_location = start_location_x * self.width + start_location_y
 
+		end = code_action % 100
+		end_location_x = end // 10
+		end_location_y = end % 10
+		end_location = end_location_x * self.width + end_location_y
+
+		start_chess= self.cross_list[start_location].chess
+		chess_type = start_chess.chess_type
+		chess_seat = start_chess.seat
+
+		right_direction = 1	
+		left_direction = -1
+		up_direction = self.width	
+		down_direction = -self.width	
+		left_up_direction = self.width - 1
+		right_up_direction = self.width + 1
+		left_down_direction = -self.width - 1
+		right_down_direction = -self.width + 1
+
+		direction = end_location - start_location
+		count = self.same_chess_count(chess_type,start,chess_seat)
+		#司令
+		if chess_type == 0:
+			dic = {right_direction:0,left_direction:1,up_direction:2,down_direction:3,left_up_direction:4,right_up_direction:5,left_down_direction:6,right_down_direction:7}
+			return dic[direction]
+		#军长
+		elif chess_type == 1:
+			dic = {right_direction:8,left_direction:9,up_direction:10,down_direction:11,left_up_direction:12,right_up_direction:13,left_down_direction:14,right_down_direction:15}			
+			return dic[direction]
+		#师长
+		elif chess_type == 2:
+			if count == 1:
+				dic = {right_direction:16,left_direction:17,up_direction:18,down_direction:19,left_up_direction:20,right_up_direction:21,left_down_direction:22,right_down_direction:23}			
+			else:
+				dic = {right_direction:24,left_direction:25,up_direction:26,down_direction:27,left_up_direction:28,right_up_direction:29,left_down_direction:30,right_down_direction:31}	
+			return dic[direction]
+		#旅长
+		elif chess_type == 3:
+			if count == 1:
+				dic = {right_direction:32,left_direction:33,up_direction:34,down_direction:35,left_up_direction:36,right_up_direction:37,left_down_direction:38,right_down_direction:39}			
+			else:
+				dic = {right_direction:40,left_direction:41,up_direction:42,down_direction:43,left_up_direction:44,right_up_direction:45,left_down_direction:46,right_down_direction:47}	
+			return dic[direction]
+		#团长
+		elif chess_type == 4:
+			if count == 1:
+				dic = {right_direction:48,left_direction:49,up_direction:50,down_direction:51,left_up_direction:52,right_up_direction:53,left_down_direction:54,right_down_direction:55}			
+			else:
+				dic = {right_direction:56,left_direction:57,up_direction:58,down_direction:59,left_up_direction:60,right_up_direction:61,left_down_direction:62,right_down_direction:63}	
+			return dic[direction]
+		#营长
+		elif chess_type == 5:
+			if count == 1:
+				dic = {right_direction:64,left_direction:65,up_direction:66,down_direction:67,left_up_direction:68,right_up_direction:69,left_down_direction:70,right_down_direction:71}			
+			else:
+				dic = {right_direction:72,left_direction:73,up_direction:74,down_direction:75,left_up_direction:76,right_up_direction:77,left_down_direction:78,right_down_direction:79}	
+			return dic[direction]
+		#连长
+		elif chess_type == 6:
+			dic = {right_direction:80,left_direction:81,up_direction:82,down_direction:83,left_up_direction:84,right_up_direction:85,left_down_direction:86,right_down_direction:87}			
+			return dic[direction]			
+		#炸弹
+		elif chess_type == 7:
+			dic = {right_direction:88,left_direction:89,up_direction:90,down_direction:91,left_up_direction:92,right_up_direction:93,left_down_direction:94,right_down_direction:95}			
+			return dic[direction]	
+
+	def get_moves(self,seat):
+		print(seat)
+		moves = []
+		for i in range(len(self.cross_list)):
+			cross = self.cross_list[i]
+			chess = cross.chess
+			if chess != None:
+				if chess.seat == seat:
+					for element in cross.adjacent_cross:
+						if self.cross_list[element].chess == None:
+							move = self.get_move_by_index(i,element)
+							moves.append(move)
+						else:
+							fight_result = chess.get_fight_result(self.cross_list[element].chess)
+							if fight_result != 2 and fight_result != -1:
+								move = self.get_move_by_index(i,element)
+								moves.append(move)
+		return moves
+
+	def get_availables(self,moves):
+		availables = []
+		for i in range(len(moves)):
+			available = self.decode_action(moves[i])
+			availables.append(available)
+		return availables
+
+	def decode_chess_type_by_available(self,available):
+		num = available // 8
+		chess_type = None
+		if num == 0:
+			chess_type = 0
+		elif num == 1:
+			chess_type = 1
+		elif num == 2 or num == 3:
+			chess_type = 2
+		elif num == 4 or num == 5:
+			chess_type = 3
+		elif num == 6 or num == 7:
+			chess_type = 4
+		elif num == 8 or num == 9:
+			chess_type = 5
+		elif num == 10:
+			chess_type = 6
+		elif num == 11:
+			chess_type = 7
+		return chess_type
+
+	def get_chess_pos(self,chess_type,seat,count):
+		for i in range(len(self.cross_list)):
+			chess = self.cross_list[i].chess
+			if chess != None:
+				if chess.chess_type == chess_type and chess.seat == seat:
+					count = count - 1
+					if count == 0:
+						return i 
+
+	def get_chess_end_index(self,start_index,direction):
+		if direction == 0:
+			return start_index + 1
+		elif direction == 1:
+			return start_index - 1
+		elif direction == 2:
+			return start_index + self.width
+		elif direction == 3:
+			return start_index - self.width
+		elif direction == 4:
+			return start_index + self.width - 1
+		elif direction == 5:
+			return start_index + self.width + 1
+		elif direction == 6:
+			return start_index - self.width - 1
+		elif direction == 7:
+			return start_index - self.width + 1
+
+	def get_action_by_available(self,available,seat):
+		#chess_type = self.decode_chess_type(available)
+		action = []
+		num = available // 8
+		direction = available % 8
+		chess_type = self.decode_chess_type_by_available(available)
+		if num == 0 or num == 1 or num == 2 or num == 4 or num == 6 or num == 8 or num == 10 or num == 11:
+			start_index = self.get_chess_pos(chess_type,seat,1)
+			end_index = self.get_chess_end_index(start_index,direction)
+			action.append(start_index)
+			action.append(end_index)
+		elif num == 3 or num == 5 or num == 7 or num == 9:
+			start_index = self.get_chess_pos(chess_type,seat,2)
+			end_index = self.get_chess_end_index(start_index,direction)
+			action.append(start_index)
+			action.append(end_index)
+		return action
 
 class Game(object):
 	def __init__(self,board):
@@ -339,11 +560,12 @@ class Game(object):
 		if is_shown:
 			self.graphic(self.board)
 		count = 0
-		while count < 2:
+		while True:
 			current_player = self.board.get_current_player()
 			player_in_turn = players[current_player]
-			action = player_in_turn.human_action(self.board)
-			self.board.do_action(action)
+			action = player_in_turn.get_action(self.board)
+
+			self.board.do_move(action)
 			if is_shown:
 				self.graphic(self.board)
 			end,winner = self.board.game_end()
@@ -365,7 +587,8 @@ class Game(object):
 			states.append(self.board.current_state())
 			mcts_probs.append(action_probs)
 			current_players.append(self.board.current_player)
-			self.board.do_action(action)
+
+			self.board.do_move(action)
 			if is_shown:
 				self.graphic(self.board)
 			end,winner = self.board.game_end()

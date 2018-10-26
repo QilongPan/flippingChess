@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-24 15:23:57
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-25 17:10:24
+# @Last Modified time: 2018-10-26 13:37:13
 from __future__ import print_function
 import random
 import numpy as np 
@@ -25,3 +25,5 @@ action = [[1,2],[2,1],[3,4]]
 a = [3,4]
 if a not in action:
 	print("enter")
+
+
