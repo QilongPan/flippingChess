@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-25 11:36:34
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-26 14:43:18
+# @Last Modified time: 2018-10-27 10:51:22
 
 import numpy as np
 import tensorflow as tf
@@ -122,7 +122,7 @@ class PolicyValueNet():
         
         legal_positions = board.availables
         current_state = np.ascontiguousarray(board.current_state().reshape(
-                -1, 4, self.board_width, self.board_height))
+                -1, 4, self.board_height, self.board_width))
         act_probs, value = self.policy_value(current_state)
         act_probs = zip(legal_positions, act_probs[0][legal_positions])
         return act_probs, value

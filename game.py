@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-24 15:27:55
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-26 19:08:23
+# @Last Modified time: 2018-10-27 10:50:32
 from __future__ import print_function
 import random
 import numpy as np
@@ -185,10 +185,11 @@ class Board(object):
 		self.cross_list[29].chess = None
 		self.moves = self.get_moves(self.current_player)
 		self.availables = self.get_availables(self.moves)
-		print("moves:")
-		print(self.moves)
-		print("availables:")
-		print(self.availables)
+#		print("moves:")
+#		print(self.moves)
+#		print("availables:")
+#		print(self.availables)
+		
 
 	def random_layout(self):
 		for i in range(len(self.all_chess) - 1,-1,-1):
@@ -220,12 +221,9 @@ class Board(object):
 	def get_current_player(self):
 		return self.current_player
 
-	def do_move(self,action):
-
+	def do_move(self,available):
+		action = self.get_action_by_available(available,self.current_player)
 		self.last_action = action
-		print("last action:")
-		print(self.last_action)
-
 		self.action_times = self.action_times + 1
 		if self.cross_list[action[1]].chess == None:
 			self.no_eat_chess_times = self.no_eat_chess_times + 1
@@ -238,12 +236,6 @@ class Board(object):
 			self.current_player = self.players[1]
 		self.moves = self.get_moves(self.current_player)
 		self.availables = self.get_availables(self.moves)
-		print("moves:")
-		print(self.moves)
-		print("availables:")
-		print(self.availables)
-		print("no eat chess times:",self.no_eat_chess_times)
-		print("action times:",self.action_times)
 
 	def move_chess(self,action):
 		if len(action) < 2:
@@ -320,26 +312,28 @@ class Board(object):
 	第四个棋盘为如果该己方行动，则为1，否则为0
 	'''
 	def current_state(self):
-		square_state = np.zeros((4, self.width, self.height))
+		square_state = np.zeros((4, self.height, self.width))
 		if self.action_times > 0:
-			for i in range(self.width):
-				for j in range(self.height):
-					chess = self.cross_list[self.width * self.height + self.height].chess
+			for i in range(self.height):
+				for j in range(self.width):
+					chess = self.cross_list[i * self.width + j].chess
 					if chess != None:
 						if chess.seat == self.current_player:
-							square_state[0][self.width,self.height] = chess.cross_type
+							square_state[0][i,j] = chess.chess_type
 						else:
-							square_state[1][self.width,self.height] = chess.cross_type
-			square_state[2][self.last_action[1]//self.width,self.last_action[1]%self.height] = 1.0
-		if len(self.action_times) % 2 == 0:
-			square_state[3][:,:] = 1.0
+							square_state[1][i,j] = chess.chess_type
+			square_state[2][self.last_action[1]//self.width,self.last_action[1]%self.width] = 1.0
+		if self.action_times % 2 == 0:
+			square_state[3][:, :] = 1.0
         #将棋盘最后一行放到第一行，倒数第二行放在第二行，依次类推
-		return square_state[:,::-1,:]
+		return square_state[:,::-1, :]
 	'''
 	行为表示为xyab xy表示移动前位置，ab表示移动后位置 x与a为0时可省略
 	'''
+	'''
 	def code_action(self,action):
 		return action[0]*100 + action[1]
+	'''
 
 	#move表示为xyab xy表示移动前位置，ab表示移动后位置 x与a为0时可省略
 	def get_action_by_move(self,move):
@@ -353,8 +347,10 @@ class Board(object):
 		end_location_y = end_location % 10
 		action.append(end_location_x * self.width + end_location_y)
 		return action
-
-	def get_move_by_index(self,start_index,end_index):
+	#根据action[f,g]得到abxy
+	def get_move_by_action(self,action):
+		start_index = action[0]
+		end_index = action[1]
 		start_x = start_index // self.width
 		start_y = start_index % self.width
 		end_x = end_index // self.width
@@ -377,14 +373,14 @@ class Board(object):
 					count = count + 1
 		return count
 
-	#width = 5 height = 6
-	def decode_action(self,code_action):
-		start = code_action // 100
+
+	def get_available_by_move(self,move):
+		start = move // 100
 		start_location_x = start // 10
 		start_location_y = start % 10
 		start_location = start_location_x * self.width + start_location_y
 
-		end = code_action % 100
+		end = move % 100
 		end_location_x = end // 10
 		end_location_y = end % 10
 		end_location = end_location_x * self.width + end_location_y
@@ -450,7 +446,6 @@ class Board(object):
 			return dic[direction]	
 
 	def get_moves(self,seat):
-		print(seat)
 		moves = []
 		for i in range(len(self.cross_list)):
 			cross = self.cross_list[i]
@@ -459,23 +454,23 @@ class Board(object):
 				if chess.seat == seat:
 					for element in cross.adjacent_cross:
 						if self.cross_list[element].chess == None:
-							move = self.get_move_by_index(i,element)
+							move = self.get_move_by_action([i,element])
 							moves.append(move)
 						else:
 							fight_result = chess.get_fight_result(self.cross_list[element].chess)
 							if fight_result != 2 and fight_result != -1:
-								move = self.get_move_by_index(i,element)
+								move = self.get_move_by_action([i,element])
 								moves.append(move)
 		return moves
 
 	def get_availables(self,moves):
 		availables = []
 		for i in range(len(moves)):
-			available = self.decode_action(moves[i])
+			available = self.get_available_by_move(moves[i])
 			availables.append(available)
 		return availables
 
-	def decode_chess_type_by_available(self,available):
+	def get_chess_type_by_available(self,available):
 		num = available // 8
 		chess_type = None
 		if num == 0:
@@ -528,7 +523,7 @@ class Board(object):
 		action = []
 		num = available // 8
 		direction = available % 8
-		chess_type = self.decode_chess_type_by_available(available)
+		chess_type = self.get_chess_type_by_available(available)
 		if num == 0 or num == 1 or num == 2 or num == 4 or num == 6 or num == 8 or num == 10 or num == 11:
 			start_index = self.get_chess_pos(chess_type,seat,1)
 			end_index = self.get_chess_end_index(start_index,direction)
@@ -560,11 +555,15 @@ class Game(object):
 		if is_shown:
 			self.graphic(self.board)
 		count = 0
-		while True:
+		while count < 5:
 			current_player = self.board.get_current_player()
 			player_in_turn = players[current_player]
 			action = player_in_turn.get_action(self.board)
-
+			if not isinstance(action,list):
+				pass
+			else:
+				move = self.board.get_move_by_action(action)
+				action = self.board.get_available_by_move(move)
 			self.board.do_move(action)
 			if is_shown:
 				self.graphic(self.board)
@@ -583,11 +582,15 @@ class Game(object):
 		p1,p2 = self.board.players
 		states,mcts_probs,current_players = [],[],[]
 		while True:
-			action,action_probs = player.get_action(self.board,temp=temp,ruturn_prob = 1)
+			action,action_probs = player.get_action(self.board,temp=temp,return_prob = 1)
 			states.append(self.board.current_state())
 			mcts_probs.append(action_probs)
 			current_players.append(self.board.current_player)
-
+			if not isinstance(action,list):
+				pass
+			else:
+				move = self.board.get_move_by_action(action)
+				action = self.board.get_available_by_move(move)			
 			self.board.do_move(action)
 			if is_shown:
 				self.graphic(self.board)

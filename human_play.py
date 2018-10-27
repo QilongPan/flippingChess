@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-24 15:24:39
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-26 16:36:23
+# @Last Modified time: 2018-10-27 12:12:21
 
 '''
 游戏规则：
@@ -19,11 +19,14 @@
 输入:x,y x表示起始点的棋盘位置，y表示移动到的终点棋盘位置 比如 0,1 表示从棋盘的第一个位置移动到第二个位置
 move的表示方式为:abcd ab为移动前的横纵坐标 cd为移动后的横纵坐标 a,c为0时可以省略
 action的表示方式为[x,y] x,y可与abcd相互转换
+avaiable表示行动
 该游戏总共有96总行为，每颗棋子可以移动到上，下，左，右，左上，右上，右下，左下8中行为
 
 '''
 from __future__ import print_function
 from game import Board,Game
+from mcts_alphaZero import MCTSPlayer
+from policy_value_net_tensorflow import PolicyValueNet
 
 class Human(object):
 
@@ -52,14 +55,23 @@ class Human(object):
 		if not board.can_move_to(action[0],action[1]):
 			print(action[0],"can't move to",action[1])
 			action = self.get_action(board)
+
 		return action
 
 def run():
+	model_file = './current_policy.model'
+	width = 5
+	height = 6
+
 	board = Board()
 	game = Game(board)
-	human1 = Human()
-	human2 = Human()
-	game.start_play(human1,human2)
+	best_policy = PolicyValueNet(width, height, model_file)
+	mcts_player = MCTSPlayer(best_policy.policy_value_fn,
+	                         c_puct=5,
+	                         n_playout=400)
+	human = Human()
+	game.start_play(human, mcts_player, start_player=1, is_shown=1)
+
 
 if __name__ == '__main__':
 	run()

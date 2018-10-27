@@ -2,7 +2,7 @@
 # @Author: Qilong Pan
 # @Date:   2018-10-25 11:29:56
 # @Last Modified by:   Qilong Pan
-# @Last Modified time: 2018-10-25 11:35:55
+# @Last Modified time: 2018-10-27 11:07:30
 from __future__ import print_function
 import random
 import numpy as np
@@ -39,7 +39,7 @@ class TrainPipeline():
     #    self.check_freq = 50
         self.check_freq = 50
     #    self.game_batch_num = 1500
-        self.game_batch_num = 1500
+        self.game_batch_num = 50
         self.best_win_ratio = 0.0
         # num of simulations used for the pure mcts, which is used as
         # the opponent to evaluate the trained policy
@@ -88,7 +88,7 @@ class TrainPipeline():
             play_data = list(play_data)[:]
             self.episode_len = len(play_data)
             # augment the data
-            play_data = self.get_equi_data(play_data)
+         #   play_data = self.get_equi_data(play_data)
             self.data_buffer.extend(play_data)
 
     def policy_update(self):
